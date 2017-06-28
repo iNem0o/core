@@ -1,4 +1,5 @@
 <?php
+echo "Begin Clean .....\n";
 try {
       $re = '/s:\d*:(.*?);s:\d*:"(.*?)";s/';
       $result = array();
