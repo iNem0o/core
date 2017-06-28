@@ -26,7 +26,7 @@ if (php_sapi_name() != 'cli' || isset($_SERVER['REQUEST_METHOD']) || !isset($_SE
 }
 set_time_limit(1800);
 echo "[START UPDATE]\n";
-$starttime = strtotime('now');
+
 if (isset($argv)) {
 	foreach ($argv as $arg) {
 		$argList = explode('=', $arg);
@@ -103,10 +103,10 @@ try {
 		if (init('level', -1) < 1) {
 			if (config::byKey('update::backupBefore') == 1 && init('mode') != 'force') {
 				try {
-					global $NO_PLUGIN_BACKUP;
-					$NO_PLUGIN_BACKUP = true;
-					global $NO_CLOUD_BACKUP;
-					$NO_CLOUD_BACKUP = true;
+					global $NO_PLUGIN_BAKCUP;
+					$NO_PLUGIN_BAKCUP = true;
+					global $NO_CLOUD_BAKCUP;
+					$NO_CLOUD_BAKCUP = true;
 					jeedom::backup();
 				} catch (Exception $e) {
 					if (init('mode') != 'force') {
@@ -124,12 +124,14 @@ try {
 			if (init('version') == '') {
 				try {
 					echo 'Clean temporary file (tmp)...';
-					shell_exec('rm -rf ' . dirname(__FILE__) . '/../install/update/*');
+					exec('rm -rf ' . dirname(__FILE__) . '/../tmp/*.zip');
+					exec('rm -rf ' . dirname(__FILE__) . '/../tmp/backup');
+					exec('rm -rf ' . dirname(__FILE__) . '/../install/update/*');
 					echo "OK\n";
 				} catch (Exception $e) {
 					echo '***ERROR*** ' . $e->getMessage() . "\n";
 				}
-				$tmp_dir = jeedom::getTmpFolder('install');
+				$tmp_dir = dirname(__FILE__) . '/../tmp';
 				$tmp = $tmp_dir . '/jeedom_update.zip';
 				try {
 					if (config::byKey('core::repo::provider') == 'default') {
@@ -144,24 +146,23 @@ try {
 						}
 						exec('wget --no-check-certificate --progress=dot --dot=mega ' . $url . ' -O ' . $tmp);
 					} else {
-						$class = 'repo_' . config::byKey('core::repo::provider');
-						if (!class_exists($class)) {
-							throw new Exception('Unable to find repo class : ' . $class);
+						$url = 'https://github.com/jeedom/core/archive/releas.zip';
+						echo "Download url : " . $url . "\n";
+						echo "Download in progress...";
+						if (!is_writable($tmp_dir)) {
+							throw new Exception('Can not write : ' . $tmp . '. Please execute : chmod 777 -R ' . $tmp_dir);
 						}
-						if (!method_exists($class, 'downloadCore')) {
-							throw new Exception('Unable to find method : ' . $class . '::downloadCore');
+						if (file_exists($tmp)) {
+							unlink($tmp);
 						}
-						if (config::byKey(config::byKey('core::repo::provider') . '::enable') != 1) {
-							throw new Exception('Repo is disable : ' . $class);
-						}
-						$class::downloadCore($tmp);
+						exec('wget --no-check-certificate --progress=dot --dot=mega ' . $url . ' -O ' . $tmp);
 					}
 					if (filesize($tmp) < 100) {
 						throw new Exception('Download failed please retry later');
 					}
 					echo "OK\n";
 					echo "Cleaning folder...";
-					$cibDir = jeedom::getTmpFolder('install/unzip');
+					$cibDir = dirname(__FILE__) . '/../tmp/jeedom';
 					if (file_exists($cibDir)) {
 						rrmdir($cibDir);
 					}
@@ -176,8 +177,8 @@ try {
 						@rrmdir(dirname(__FILE__) . '/../' . $file);
 					}
 					echo "OK\n";
-					echo "Create temporary folder...";
-					if (!file_exists($cibDir) && !mkdir($cibDir, 0777, true)) {
+					echo "Création des dossiers temporaire...";
+					if (!file_exists($cibDir) && !mkdir($cibDir, 0775, true)) {
 						throw new Exception('Can not write into  : ' . $cibDir . '.');
 					}
 					echo "OK\n";
@@ -192,7 +193,7 @@ try {
 						throw new Exception('Unable to unzip file : ' . $tmp);
 					}
 					echo "OK\n";
-					echo "Moving file...";
+					echo "Copying file...";
 					$update_begin = true;
 					if (!file_exists($cibDir . '/core')) {
 						$files = ls($cibDir, '*');
@@ -200,10 +201,11 @@ try {
 							$cibDir = $cibDir . '/' . $files[0];
 						}
 					}
-					rmove($cibDir . '/', dirname(__FILE__) . '/../', false, array(), true);
+					rcopy($cibDir . '/', dirname(__FILE__) . '/../', false, array(), true);
 					echo "OK\n";
 					echo "Remove temporary file...";
 					rrmdir($cibDir);
+					unlink($tmp);
 					echo "OK\n";
 					config::save('update::lastDateCore', date('Y-m-d H:i:s'));
 				} catch (Exception $e) {
@@ -392,7 +394,7 @@ try {
 		echo "Add user (admin,admin)\n";
 		$user = new user();
 		$user->setLogin('admin');
-		$user->setPassword(sha512('admin'));
+		$user->setPassword(sha1('admin'));
 		$user->setRights('admin', 1);
 		$user->save();
 		config::save('log::level', 400);
@@ -431,7 +433,7 @@ try {
 } catch (Exception $e) {
 
 }
-echo "Install/update duration : " . (strtotime('now') - $starttime) . "s\n";
+
 echo "[END UPDATE SUCCESS]\n";
 
 function incrementVersion($_version) {
