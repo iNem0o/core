@@ -131,6 +131,7 @@ try {
   } catch (Exception $e) {
 
   }
+echo 'Preparing .....';
 shell_exec('sudo mkdir -p /home/jeedomtmp');
 shell_exec('sudo mv /tmp /home/jeedomtmp');
 jeedom::update();
