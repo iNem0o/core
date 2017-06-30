@@ -323,7 +323,7 @@ distrib_1_spe(){
 }
 
 STEP=0
-VERSION=stable
+VERSION=stablev3
 WEBSERVER_HOME=/var/www/html
 INSTALL_ZWAVE_DEP=0
 HTML_OUTPUT=0
